@@ -38,6 +38,12 @@ Run the application using the provided shell script:
 ## CSV File Format
 - **Single-choice mode**: Each question in the CSV should have one correct answer.
 - **Multiple-choice mode**: Supports up to 6 answer options per question.
+- You should always use double quote to avoid error:
+    ```csv
+    question,options,correct
+    "What is 2 + 2?","[""3"",""4"",""5"",""6""]","1"
+    "How do you list a folder with path /home/test?","[""pwd"",""ls -al '/home/test'"",""rm -rf '/home/test'"",""cat '/home/test'""]","2"
+    ```
 - Refer to example CSV files in the `csv/` directory for formatting details.
 
 ## Notes
