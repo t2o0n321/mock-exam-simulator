@@ -1,0 +1,11 @@
+question,options,correct
+What is the capital of France?,"['Paris', 'London', 'Berlin', 'Madrid']",0
+Which planets are gas giants?,"['Mercury', 'Jupiter', 'Saturn', 'Mars', 'Uranus', 'Neptune']","1,2,4,5"
+What is 2 + 2?,"['3', '4', '5', '6']",1
+Which languages are used for web development?,"['Python', 'HTML', 'CSS', 'JavaScript', 'C++']","1,2,3"
+Who wrote 'Pride and Prejudice'?,"['Jane Austen', 'Charles Dickens', 'Emily Bronte', 'Mark Twain']",0
+Which elements are noble gases?,"['Helium', 'Oxygen', 'Neon', 'Argon', 'Krypton']","0,2,3,4"
+What is the largest mammal?,"['Elephant', 'Blue Whale', 'Giraffe', 'Hippopotamus']",1
+Which countries are in Scandinavia?,"['Sweden', 'France', 'Norway', 'Denmark', 'Finland']","0,2,3"
+What is the boiling point of water?,"['0oC', '50oC', '100oC', '150oC']",2
+Which are renewable energy sources?,"['Coal', 'Solar', 'Wind', 'Natural Gas', 'Hydro', 'Nuclear']","1,2,4"
