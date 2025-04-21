@@ -1,0 +1,10 @@
+dist/
+build/
+mock-venv/
+
+.git/
+
+.DS_Store
+
+csv/*.csv
+!csv/sample*.csv
