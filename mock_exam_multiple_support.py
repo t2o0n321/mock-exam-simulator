@@ -1,5 +1,3 @@
-#!/Users/guo/Downloads/mock-exam/mock-venv/bin/python3
-
 import tkinter as tk
 from tkinter import filedialog, messagebox, Toplevel, ttk
 import pandas as pd
