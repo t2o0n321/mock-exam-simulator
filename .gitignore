@@ -8,3 +8,7 @@ mock-venv/
 
 csv/*.csv
 !csv/sample*.csv
+
+csv/*.md
+
+test/
