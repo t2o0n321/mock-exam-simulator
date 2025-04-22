@@ -10,13 +10,13 @@ window:
 # Exam Settings
 exam:
   default_questions: 100
-  default_time_limit_minutes: 60
+  default_time_limit_minutes: 100
   base_mark: 1.00
 
 # UI Styles
 styles:
   button:
-    font: ["Segoe UI", 8]
+    font: ["Segoe UI", 10]
     padding: 3
     active_background: "#333333"  # A slightly lighter black/gray for active state
     default_background: "#000000"  # Black for default background

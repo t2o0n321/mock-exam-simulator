@@ -114,7 +114,6 @@ class UIManager:
         self.selected_answers = {}
         self.option_widgets: List[ttk.Radiobutton | ttk.Checkbutton] = []
         self.option_frames: List[tk.Frame] = []
-        # Use MacButton or ttk.Button based on platform
         self.nav_buttons: List = []
         self.options_frame = None
         self.options_canvas = None
@@ -181,12 +180,11 @@ class UIManager:
                        background=style_config['progressbar']['background'], 
                        troughcolor=style_config['progressbar']['troughcolor'])
         
-        # Only configure ttk styles for non-macOS platforms
         if not self.is_macos:
-            style.configure("Answered.TButton", background="#a3e635")  # Light green for answered
+            style.configure("Answered.TButton", background="#a3e635")
             style.configure("Active.TButton", background=style_config['active_button']['background'])
             style.configure("Viewed.TButton", background=style_config['viewed_button']['background'])
-            style.configure("Flagged.TButton", background="#ff9500")  # Orange for flagged
+            style.configure("Flagged.TButton", background="#ff9500")
 
         style.configure("Option.TRadiobutton", 
                        background=style_config['radiobutton']['background'], 
@@ -277,7 +275,13 @@ class UIManager:
         self.options_canvas.pack(side="left", fill="both", expand=True, padx=20, pady=10)
         scrollbar.pack(side="right", fill="y")
 
-        # Use MacButton for toggle button on macOS, otherwise ttk.Button
+        # Bind mouse wheel events for scrolling, including Touch Bar support on macOS
+        if self.is_macos:
+            self.options_canvas.bind_all("<MouseWheel>", self._on_options_mousewheel)
+            self.options_canvas.bind_all("<Shift-MouseWheel>", lambda event: None)  # Prevent horizontal scroll
+        else:
+            self.options_canvas.bind_all("<MouseWheel>", self._on_options_mousewheel)
+
         if self.is_macos:
             self.toggle_button = MacButton(content_frame, 
                                          text="Show Navigation" if not self.nav_visible else "Hide Navigation",
@@ -324,6 +328,12 @@ class UIManager:
             self.nav_canvas.xview_scroll(-1, "units")
         elif event.delta < 0:
             self.nav_canvas.xview_scroll(1, "units")
+
+    def _on_options_mousewheel(self, event):
+        scroll_direction = -1 if event.delta > 0 else 1
+        if self.is_macos:
+            scroll_direction *= -1
+        self.options_canvas.yview_scroll(scroll_direction, "units")
 
     def toggle_navigation(self):
         self.nav_visible = not self.nav_visible
@@ -413,7 +423,6 @@ class UIManager:
             question = questions[i]
             
             if self.is_macos:
-                # Use config colors for macOS
                 if i == current_index:
                     btn.config(background=style_config['active_button']['background'],
                               foreground=style_config['button']['active_foreground'])
@@ -430,7 +439,6 @@ class UIManager:
                     btn.config(background=style_config['button']['default_background'],
                               foreground=style_config['button']['default_foreground'])
             else:
-                # Use ttk styles for non-macOS
                 if i == current_index:
                     btn.config(style="Active.TButton")
                 elif question.flagged:
@@ -820,7 +828,6 @@ class MockExamApp:
         
         listbox.bind("<Double-1>", go_to_question)
 
-        # Use MacButton for "Close" button on macOS
         style_config = self.config['styles']
         if self.is_macos:
             close_button = MacButton(review_window, 
@@ -905,7 +912,6 @@ class MockExamApp:
             scrollbar.pack(side="right", fill="y")
             listbox.config(yscrollcommand=scrollbar.set)
             
-            # Use MacButton for "Close" button on macOS
             style_config = self.config['styles']
             if self.is_macos:
                 close_button = MacButton(feedback_window, 
