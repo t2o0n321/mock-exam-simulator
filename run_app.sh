@@ -7,11 +7,11 @@ python_script=""
 while [[ $# -gt 0 ]]; do
     case "$1" in
         -s|--single)
-            python_script="$mock_exam_dir/mock_exam_single_support.py"
+            python_script="$mock_exam_dir/mock_exam_single_support/mock_exam_single_support.py"
             shift
             ;;
         -m|--multiple)
-            python_script="$mock_exam_dir/mock_exam_multiple_support.py"
+            python_script="$mock_exam_dir/mock_exam_multiple_support/mock_exam_multiple_support.py"
             shift
             ;;
         -h|--help)
