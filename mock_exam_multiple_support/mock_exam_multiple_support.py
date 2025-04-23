@@ -73,7 +73,10 @@ class QuestionBank:
                         text=str(row["question"]),
                         options=options,
                         correct_answers=correct_answers,
-                        is_multiple_choice=len(correct_answers) > 1
+                        is_multiple_choice=len(correct_answers) > 1,
+                        user_answers=None,
+                        answer_viewed=False,
+                        flagged=False
                     )
                 )
             return True
@@ -83,7 +86,12 @@ class QuestionBank:
 
     def get_random_questions(self, count: int) -> List[Question]:
         sample_size = min(len(self.questions), count)
-        return random.sample(self.questions, sample_size)
+        selected_questions = random.sample(self.questions, sample_size)
+        for q in selected_questions:
+            q.user_answers = None
+            q.answer_viewed = False
+            q.flagged = False
+        return selected_questions
 
 class ExamState:
     def __init__(self, config):
@@ -275,10 +283,9 @@ class UIManager:
         self.options_canvas.pack(side="left", fill="both", expand=True, padx=20, pady=10)
         scrollbar.pack(side="right", fill="y")
 
-        # Bind mouse wheel events for scrolling, including Touch Bar support on macOS
         if self.is_macos:
             self.options_canvas.bind_all("<MouseWheel>", self._on_options_mousewheel)
-            self.options_canvas.bind_all("<Shift-MouseWheel>", lambda event: None)  # Prevent horizontal scroll
+            self.options_canvas.bind_all("<Shift-MouseWheel>", lambda event: None)
         else:
             self.options_canvas.bind_all("<MouseWheel>", self._on_options_mousewheel)
 
@@ -372,6 +379,10 @@ class UIManager:
 
     def create_options(self, question: Question):
         self.clear_options()
+        # Reset selected_answer to ensure no stale values
+        self.selected_answer.set("")
+        print(f"Creating options for question: {question.text}")
+        print(f"Initial selected_answer: {self.selected_answer.get()}")
         for option in question.options:
             option_frame = tk.Frame(self.options_inner_frame, bg=self.config['window']['background'], relief="solid", borderwidth=1,
                                   highlightbackground="#dee2e6", highlightthickness=1)
@@ -385,6 +396,8 @@ class UIManager:
                 widget = ttk.Checkbutton(option_frame, text=option, variable=var, style="Option.TCheckbutton")
             else:
                 widget = ttk.Radiobutton(option_frame, text=option, variable=self.selected_answer, value=option, style="Option.TRadiobutton")
+                # Add a trace to debug when the selection changes
+                self.selected_answer.trace_add("write", lambda *args: print(f"Selected answer changed to: {self.selected_answer.get()}"))
             
             widget.pack(anchor="w", padx=15, pady=10)
             self.option_widgets.append(widget)
@@ -690,9 +703,6 @@ class MockExamApp:
             
         self.exam_state.reset()
         self.exam_state.questions = self.question_bank.get_random_questions(num_questions)
-        for q in self.exam_state.questions:
-            q.answer_viewed = False
-            q.flagged = False
         self.exam_state.time_remaining = time_limit * 60
         
         self.ui.show_quiz_frame()
@@ -729,7 +739,9 @@ class MockExamApp:
             for option, var in self.ui.selected_answers.items():
                 var.set(option in (question.user_answers or []))
         else:
-            self.ui.selected_answer.set(question.user_answers[0] if question.user_answers else "")
+            selected_value = question.user_answers[0] if question.user_answers else ""
+            self.ui.selected_answer.set(selected_value)
+            print(f"Displaying question {self.exam_state.current_index + 1}, set selected_answer to: {self.ui.selected_answer.get()}")
         
         self.prev_button.config(state="normal" if self.exam_state.current_index > 0 else "disabled")
         self.next_button.config(state="normal" if self.exam_state.current_index < len(self.exam_state.questions) - 1 else "disabled")
@@ -746,6 +758,7 @@ class MockExamApp:
             question.user_answers = selected if selected else None
         else:
             answer = self.ui.selected_answer.get()
+            print(f"Saving answer for question {self.exam_state.current_index + 1}, selected_answer: {answer}")
             question.user_answers = [answer] if answer else None
         print(f"Saved answers for question {self.exam_state.current_index + 1}: {question.user_answers}")
 
@@ -783,6 +796,8 @@ class MockExamApp:
 
     def flag_question(self):
         question = self.exam_state.questions[self.exam_state.current_index]
+        # Save the current answer before toggling the flag
+        self.save_current_answer()
         question.flagged = not question.flagged
         self.display_question()
         self.ui.update_navigation_buttons(self.exam_state.questions, self.exam_state.current_index)
@@ -867,6 +882,16 @@ class MockExamApp:
         if self.exam_state.score < 0:
             self.exam_state.score = 0
         
+        flagged_questions = [
+            {
+                'question': q.text,
+                'your_answers': ", ".join(q.user_answers) if q.user_answers else "Skipped or Viewed",
+                'correct_answers': ", ".join(q.correct_answers),
+                'answer_viewed': q.answer_viewed,
+                'is_correct': q.user_answers and sorted(q.user_answers) == sorted(q.correct_answers)
+            } for q in self.exam_state.questions if q.flagged
+        ]
+        
         incorrect_questions = [
             {
                 'question': q.text,
@@ -878,6 +903,16 @@ class MockExamApp:
             if not q.user_answers or sorted(q.user_answers) != sorted(q.correct_answers)
         ]
         
+        flagged_and_incorrect_questions = [
+            {
+                'question': q.text,
+                'your_answers': ", ".join(q.user_answers) if q.user_answers else "Skipped or Viewed",
+                'correct_answers': ", ".join(q.correct_answers),
+                'answer_viewed': q.answer_viewed
+            } for q in self.exam_state.questions
+            if q.flagged and (not q.user_answers or sorted(q.user_answers) != sorted(q.correct_answers))
+        ]
+        
         total = len(self.exam_state.questions)
         percentage = (self.exam_state.score / total) * 100 if total > 0 else 0
         messagebox.showinfo("Results", 
@@ -887,7 +922,7 @@ class MockExamApp:
                           f"Final Score: {self.exam_state.score}/{total}\n"
                           f"Percentage: {percentage:.2f}%")
         
-        if incorrect_questions:
+        if incorrect_questions or flagged_questions:
             feedback_window = Toplevel(self.root)
             feedback_window.title("Feedback: Incorrect/Skipped Questions")
             feedback_window.geometry("800x700")
@@ -943,10 +978,24 @@ class MockExamApp:
                         f.write(f"**Penalties for Viewing Answers**: {self.exam_state.penalties}\n")
                         f.write(f"**Final Score**: {self.exam_state.score}/{total}\n")
                         f.write(f"**Percentage**: {percentage:.2f}%\n\n")
+
+                        f.write("## Flagged Questions\n\n")
+                        if flagged_questions:
+                            for i, item in enumerate(flagged_questions, 1):
+                                f.write(f"### Question {i} (Flagged)\n")
+                                f.write(f"- **Question**: {item['question']}\n")
+                                f.write(f"- **Your Answers**: {item['your_answers']}\n")
+                                if item['answer_viewed']:
+                                    f.write(f"- **Note**: Marked incorrect because answer was viewed; 1 point deducted\n")
+                                f.write(f"- **Correct Answers**: {item['correct_answers']}\n")
+                                f.write(f"- **Status**: {'Correct' if item['is_correct'] else 'Incorrect'}\n\n")
+                        else:
+                            f.write("No questions were flagged.\n\n")
+
+                        f.write("## Incorrect or Skipped Questions\n\n")
                         if incorrect_questions:
-                            f.write("## Incorrect or Skipped Questions\n\n")
                             for i, item in enumerate(incorrect_questions, 1):
-                                f.write(f"### Question {i}\n")
+                                f.write(f"### Question {i} (Incorrect or Skipped)\n")
                                 f.write(f"- **Question**: {item['question']}\n")
                                 f.write(f"- **Your Answers**: {item['your_answers']}\n")
                                 if item['answer_viewed']:
@@ -955,8 +1004,24 @@ class MockExamApp:
                                     f.write(f"- **Note**: This question was flagged\n")
                                 f.write(f"- **Correct Answers**: {item['correct_answers']}\n\n")
                         else:
-                            f.write("## Feedback\n\n")
-                            f.write("Congratulations! You answered all questions correctly!\n")
+                            f.write("No incorrect or skipped questions.\n\n")
+
+                        f.write("## Flagged and Incorrect Questions\n\n")
+                        if flagged_and_incorrect_questions:
+                            for i, item in enumerate(flagged_and_incorrect_questions, 1):
+                                f.write(f"### Question {i} (Flagged and Incorrect)\n")
+                                f.write(f"- **Question**: {item['question']}\n")
+                                f.write(f"- **Your Answers**: {item['your_answers']}\n")
+                                if item['answer_viewed']:
+                                    f.write(f"- **Note**: Marked incorrect because answer was viewed; 1 point deducted\n")
+                                f.write(f"- **Correct Answers**: {item['correct_answers']}\n\n")
+                        else:
+                            f.write("No questions were both flagged and incorrect.\n\n")
+
+                        f.write("## Notes\n")
+                        f.write("- Questions marked as 'Flagged' were highlighted by you during the exam for review.\n")
+                        f.write("- Incorrect questions include those with wrong answers, skipped, or where the answer was viewed.\n")
+                        f.write("- The 'Flagged and Incorrect' section lists questions that meet both criteria.\n")
                     messagebox.showinfo("Success", f"Feedback saved to {file_path}")
                 except Exception as e:
                     messagebox.showerror("Error", f"Failed to save feedback: {str(e)}")
