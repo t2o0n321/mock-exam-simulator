@@ -126,6 +126,10 @@ class UIManager:
         self.options_frame = None
         self.options_canvas = None
         self.options_inner_frame = None
+        self.options_scrollbar = None
+        self.question_canvas = None
+        self.question_inner_frame = None
+        self.question_scrollbar = None  # Added for question scrollbar visibility
         self.timer_label = None
         self.progress_bar = None
         self.nav_frame = None
@@ -248,7 +252,7 @@ class UIManager:
         header_frame.pack(fill="x", padx=20, pady=10)
 
         self.question_canvas = tk.Canvas(header_frame, bg=window_config['background'], highlightthickness=0, height=question_bar_config['height'])
-        question_scrollbar = ttk.Scrollbar(header_frame, orient="vertical", command=self.question_canvas.yview)
+        self.question_scrollbar = ttk.Scrollbar(header_frame, orient="vertical", command=self.question_canvas.yview)
         self.question_inner_frame = tk.Frame(self.question_canvas, bg=window_config['background'])
 
         self.question_inner_frame.bind(
@@ -257,10 +261,11 @@ class UIManager:
         )
 
         self.question_canvas.create_window((0, 0), window=self.question_inner_frame, anchor="nw")
-        self.question_canvas.configure(yscrollcommand=question_scrollbar.set)
+        self.question_canvas.configure(yscrollcommand=self.question_scrollbar.set)
 
         self.question_canvas.pack(side="left", fill="both", expand=True)
-        question_scrollbar.pack(side="right", fill="y")
+        self.question_scrollbar.pack(side="right", fill="y")
+        self.question_canvas.bind("<Configure>", lambda e: self.update_question_scrollbar_visibility())
 
         self.question_label = tk.Label(self.question_inner_frame, text="", font=("Segoe UI", question_bar_config['font_size'], "bold"),
                                      bg=window_config['background'], fg="#2d2d2d", wraplength=300, justify="left")
@@ -269,7 +274,7 @@ class UIManager:
         self.root.after(100, self.update_wraplength)
 
         self.options_canvas = tk.Canvas(question_card, bg=window_config['background'], highlightthickness=0)
-        scrollbar = ttk.Scrollbar(question_card, orient="vertical", command=self.options_canvas.yview)
+        self.options_scrollbar = ttk.Scrollbar(question_card, orient="vertical", command=self.options_canvas.yview)
         self.options_inner_frame = tk.Frame(self.options_canvas, bg=window_config['background'])
 
         self.options_inner_frame.bind(
@@ -278,10 +283,11 @@ class UIManager:
         )
 
         self.options_canvas.create_window((0, 0), window=self.options_inner_frame, anchor="nw")
-        self.options_canvas.configure(yscrollcommand=scrollbar.set)
+        self.options_canvas.configure(yscrollcommand=self.options_scrollbar.set)
 
         self.options_canvas.pack(side="left", fill="both", expand=True, padx=20, pady=10)
-        scrollbar.pack(side="right", fill="y")
+        self.options_scrollbar.pack(side="right", fill="y")
+        self.options_canvas.bind("<Configure>", lambda e: self.update_scrollbar_visibility())
 
         if self.is_macos:
             self.options_canvas.bind_all("<MouseWheel>", self._on_options_mousewheel)
@@ -379,7 +385,6 @@ class UIManager:
 
     def create_options(self, question: Question):
         self.clear_options()
-        # Reset selected_answer to ensure no stale values
         self.selected_answer.set("")
         print(f"Creating options for question: {question.text}")
         print(f"Initial selected_answer: {self.selected_answer.get()}")
@@ -396,12 +401,31 @@ class UIManager:
                 widget = ttk.Checkbutton(option_frame, text=option, variable=var, style="Option.TCheckbutton")
             else:
                 widget = ttk.Radiobutton(option_frame, text=option, variable=self.selected_answer, value=option, style="Option.TRadiobutton")
-                # Add a trace to debug when the selection changes
                 self.selected_answer.trace_add("write", lambda *args: print(f"Selected answer changed to: {self.selected_answer.get()}"))
             
             widget.pack(anchor="w", padx=15, pady=10)
             self.option_widgets.append(widget)
             self.option_frames.append(option_frame)
+        
+        self.update_scrollbar_visibility()
+
+    def update_scrollbar_visibility(self):
+        self.root.update_idletasks()
+        canvas_height = self.options_canvas.winfo_height()
+        content_height = self.options_inner_frame.winfo_reqheight()
+        if content_height <= canvas_height:
+            self.options_scrollbar.pack_forget()
+        else:
+            self.options_scrollbar.pack(side="right", fill="y")
+
+    def update_question_scrollbar_visibility(self):
+        self.root.update_idletasks()
+        canvas_height = self.question_canvas.winfo_height()
+        content_height = self.question_inner_frame.winfo_reqheight()
+        if content_height <= canvas_height:
+            self.question_scrollbar.pack_forget()
+        else:
+            self.question_scrollbar.pack(side="right", fill="y")
 
     def create_navigation_buttons(self, num_questions: int, go_to_question_callback):
         for btn in self.nav_buttons:
@@ -750,6 +774,8 @@ class MockExamApp:
         self.ui.update_navigation_buttons(self.exam_state.questions, self.exam_state.current_index)
 
         self.flag_button.config(text="Unflag Question" if question.flagged else "Flag Question")
+        
+        self.ui.update_question_scrollbar_visibility()
 
     def save_current_answer(self):
         question = self.exam_state.questions[self.exam_state.current_index]
@@ -796,7 +822,6 @@ class MockExamApp:
 
     def flag_question(self):
         question = self.exam_state.questions[self.exam_state.current_index]
-        # Save the current answer before toggling the flag
         self.save_current_answer()
         question.flagged = not question.flagged
         self.display_question()
