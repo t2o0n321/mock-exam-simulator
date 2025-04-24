@@ -96,8 +96,8 @@ class QuestionBank:
             q.user_answers = None
             q.answer_viewed = False
             q.flagged = False
-            q.translated_text = None  # Reset translation
-            q.translated_options = None  # Reset translation
+            q.translated_text = None
+            q.translated_options = None
         return selected_questions
 
 class ExamState:
@@ -253,7 +253,6 @@ class UIManager:
         self.progress_bar = ttk.Progressbar(content_frame, orient="horizontal", mode="determinate")
         self.progress_bar.pack(fill="x", padx=30, pady=10)
 
-        # Add translate button
         if self.is_macos:
             self.translate_button = MacButton(content_frame, 
                                             text="Translate to " + self.config['translator']['to_lang'],
@@ -388,7 +387,6 @@ class UIManager:
         self.is_translated = not self.is_translated
         self.translate_button.config(text="Translate to " + self.config['translator']['to_lang'] if not self.is_translated else "Show Original (" + self.config['translator']['from_lang'] + ")")
         
-        # Trigger translation if switching to translated mode
         if self.is_translated:
             self.root.event_generate("<<TranslateQuestion>>")
         else:
@@ -418,10 +416,10 @@ class UIManager:
             frame.destroy()
         self.option_widgets = []
         self.option_frames = []
-        self.selected_answers.clear()
 
     def display_question(self, question: Question, current_index: int):
-        if self.is_translated and question.translated_text:
+        # Determine which text and options to display based on translation state
+        if self.is_translated and question.translated_text and question.translated_options:
             question_text = f"Question {current_index + 1}\n{question.translated_text}"
             options = question.translated_options
         else:
@@ -430,27 +428,47 @@ class UIManager:
 
         self.question_label.config(text=question_text)
         self.clear_options()
-        self.selected_answer.set("")
-        self.selected_answers.clear()
 
+        # Clear UI state for new options
+        self.selected_answers.clear()
+        if not question.is_multiple_choice:
+            self.selected_answer.set("")
+
+        # Map stored user_answers (in English) to displayed options
+        displayed_selections = []
+        if question.user_answers:
+            for ans in question.user_answers:
+                try:
+                    idx = question.options.index(ans)
+                    # If translated, map to translated option; otherwise, use English option
+                    if self.is_translated and question.translated_options and idx < len(question.translated_options):
+                        displayed_selections.append(question.translated_options[idx])
+                    else:
+                        displayed_selections.append(ans)
+                except (ValueError, IndexError):
+                    continue
+
+        # Create new option widgets
         for option in options:
             option_frame = tk.Frame(self.options_inner_frame, bg=self.config['window']['background'], relief="solid", borderwidth=1,
                                   highlightbackground="#dee2e6", highlightthickness=1)
             option_frame.pack(fill="x", pady=5)
             option_frame.bind("<Enter>", lambda e, f=option_frame: f.config(bg="#f8f9fa"))
             option_frame.bind("<Leave>", lambda e, f=option_frame: f.config(bg=self.config['window']['background']))
-            
+
             if question.is_multiple_choice:
-                var = tk.BooleanVar()
+                var = tk.BooleanVar(value=option in displayed_selections)
                 self.selected_answers[option] = var
                 widget = ttk.Checkbutton(option_frame, text=option, variable=var, style="Option.TCheckbutton")
             else:
                 widget = ttk.Radiobutton(option_frame, text=option, variable=self.selected_answer, value=option, style="Option.TRadiobutton")
-            
+                if option in displayed_selections:
+                    self.selected_answer.set(option)
+
             widget.pack(anchor="w", padx=15, pady=10)
             self.option_widgets.append(widget)
             self.option_frames.append(option_frame)
-        
+
         self.update_scrollbar_visibility()
         self.update_question_scrollbar_visibility()
 
@@ -805,36 +823,23 @@ class MockExamApp:
 
     def handle_translate_question(self, event):
         question = self.exam_state.questions[self.exam_state.current_index]
-        if not question.translated_text:  # Translate only if not already translated
+        if not question.translated_text or not question.translated_options:
             try:
                 question.translated_text = self.translator.translate(question.text)
                 question.translated_options = [self.translator.translate(opt) for opt in question.options]
+                # Validate that all options were translated successfully
+                if not question.translated_options or None in question.translated_options or len(question.translated_options) != len(question.options):
+                    raise ValueError("Incomplete or invalid translation of options")
             except Exception as e:
                 messagebox.showerror("Translation Error", f"Failed to translate: {str(e)}")
                 question.translated_text = question.text
-                question.translated_options = question.options
+                question.translated_options = question.options.copy()
         self.display_question()
 
     def display_question(self):
         question = self.exam_state.questions[self.exam_state.current_index]
-        
-        # Display translated or original text based on is_translated
-        if self.ui.is_translated and question.translated_text:
-            question_text = f"Question {self.exam_state.current_index + 1}\n{question.translated_text}"
-            options = question.translated_options
-        else:
-            question_text = f"Question {self.exam_state.current_index + 1}\n{question.text}"
-            options = question.options
-
         self.ui.display_question(question, self.exam_state.current_index)
-        
-        if question.is_multiple_choice:
-            for option, var in self.ui.selected_answers.items():
-                var.set(option in (question.user_answers or []))
-        else:
-            selected_value = question.user_answers[0] if question.user_answers else ""
-            self.ui.selected_answer.set(selected_value)
-        
+
         self.prev_button.config(state="normal" if self.exam_state.current_index > 0 else "disabled")
         self.next_button.config(state="normal" if self.exam_state.current_index < len(self.exam_state.questions) - 1 else "disabled")
         self.skip_button.config(state="normal")
@@ -845,12 +850,26 @@ class MockExamApp:
 
     def save_current_answer(self):
         question = self.exam_state.questions[self.exam_state.current_index]
+        selected = []
+
         if question.is_multiple_choice:
             selected = [opt for opt, var in self.ui.selected_answers.items() if var.get()]
-            question.user_answers = selected if selected else None
         else:
             answer = self.ui.selected_answer.get()
-            question.user_answers = [answer] if answer else None
+            selected = [answer] if answer else []
+
+        # Map selections to English if in translated mode
+        if self.ui.is_translated and question.translated_options:
+            english_selections = []
+            for sel in selected:
+                try:
+                    idx = question.translated_options.index(sel)
+                    english_selections.append(question.options[idx])
+                except (ValueError, IndexError):
+                    continue
+            selected = english_selections
+
+        question.user_answers = selected if selected else None
 
     def go_to_question(self, index: Optional[int] = None):
         self.save_current_answer()
