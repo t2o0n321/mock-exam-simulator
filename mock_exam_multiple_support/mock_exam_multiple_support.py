@@ -9,6 +9,7 @@ import ast
 import yaml
 import platform
 import os
+from deep_translator import GoogleTranslator
 
 # Conditionally import tkmacosx for macOS users
 try:
@@ -28,6 +29,8 @@ class Question:
     user_answers: Optional[List[str]] = None
     answer_viewed: bool = False
     flagged: bool = False
+    translated_text: Optional[str] = None
+    translated_options: Optional[List[str]] = None
 
 class QuestionBank:
     def __init__(self):
@@ -76,7 +79,9 @@ class QuestionBank:
                         is_multiple_choice=len(correct_answers) > 1,
                         user_answers=None,
                         answer_viewed=False,
-                        flagged=False
+                        flagged=False,
+                        translated_text=None,
+                        translated_options=None
                     )
                 )
             return True
@@ -91,6 +96,8 @@ class QuestionBank:
             q.user_answers = None
             q.answer_viewed = False
             q.flagged = False
+            q.translated_text = None  # Reset translation
+            q.translated_options = None  # Reset translation
         return selected_questions
 
 class ExamState:
@@ -129,7 +136,7 @@ class UIManager:
         self.options_scrollbar = None
         self.question_canvas = None
         self.question_inner_frame = None
-        self.question_scrollbar = None  # Added for question scrollbar visibility
+        self.question_scrollbar = None
         self.timer_label = None
         self.progress_bar = None
         self.nav_frame = None
@@ -138,6 +145,8 @@ class UIManager:
         self.nav_container = None
         self.nav_canvas = None
         self.nav_scrollbar = None
+        self.is_translated = False
+        self.translate_button = None
         self.setup_ui()
 
     def update_wraplength(self, event=None):
@@ -243,6 +252,24 @@ class UIManager:
 
         self.progress_bar = ttk.Progressbar(content_frame, orient="horizontal", mode="determinate")
         self.progress_bar.pack(fill="x", padx=30, pady=10)
+
+        # Add translate button
+        if self.is_macos:
+            self.translate_button = MacButton(content_frame, 
+                                            text="Translate to " + self.config['translator']['to_lang'],
+                                            command=self.toggle_translation,
+                                            font=tuple(style_config['button']['font']),
+                                            background=style_config['button']['default_background'],
+                                            foreground=style_config['button']['default_foreground'],
+                                            activebackground=style_config['button']['active_background'],
+                                            activeforeground=style_config['button']['active_foreground'],
+                                            borderwidth=style_config['button']['borderwidth'],
+                                            relief=style_config['button']['relief'])
+        else:
+            self.translate_button = ttk.Button(content_frame, 
+                                             text="Translate to " + self.config['translator']['to_lang'], 
+                                             command=self.toggle_translation)
+        self.translate_button.pack(pady=1)
 
         question_card = tk.Frame(content_frame, bg=window_config['background'], relief="solid", borderwidth=1,
                                highlightbackground="#dee2e6", highlightthickness=1)
@@ -357,6 +384,16 @@ class UIManager:
             self.nav_frame.pack_forget()
             self.toggle_button.config(text="Show Navigation")
 
+    def toggle_translation(self):
+        self.is_translated = not self.is_translated
+        self.translate_button.config(text="Translate to " + self.config['translator']['to_lang'] if not self.is_translated else "Show Original (" + self.config['translator']['from_lang'] + ")")
+        
+        # Trigger translation if switching to translated mode
+        if self.is_translated:
+            self.root.event_generate("<<TranslateQuestion>>")
+        else:
+            self.root.event_generate("<<UpdateQuestionDisplay>>")
+
     def show_main_frame(self):
         self.quiz_frame.pack_forget()
         self.main_frame.pack(pady=50, padx=50, fill="both", expand=True)
@@ -383,12 +420,20 @@ class UIManager:
         self.option_frames = []
         self.selected_answers.clear()
 
-    def create_options(self, question: Question):
+    def display_question(self, question: Question, current_index: int):
+        if self.is_translated and question.translated_text:
+            question_text = f"Question {current_index + 1}\n{question.translated_text}"
+            options = question.translated_options
+        else:
+            question_text = f"Question {current_index + 1}\n{question.text}"
+            options = question.options
+
+        self.question_label.config(text=question_text)
         self.clear_options()
         self.selected_answer.set("")
-        print(f"Creating options for question: {question.text}")
-        print(f"Initial selected_answer: {self.selected_answer.get()}")
-        for option in question.options:
+        self.selected_answers.clear()
+
+        for option in options:
             option_frame = tk.Frame(self.options_inner_frame, bg=self.config['window']['background'], relief="solid", borderwidth=1,
                                   highlightbackground="#dee2e6", highlightthickness=1)
             option_frame.pack(fill="x", pady=5)
@@ -401,13 +446,13 @@ class UIManager:
                 widget = ttk.Checkbutton(option_frame, text=option, variable=var, style="Option.TCheckbutton")
             else:
                 widget = ttk.Radiobutton(option_frame, text=option, variable=self.selected_answer, value=option, style="Option.TRadiobutton")
-                self.selected_answer.trace_add("write", lambda *args: print(f"Selected answer changed to: {self.selected_answer.get()}"))
             
             widget.pack(anchor="w", padx=15, pady=10)
             self.option_widgets.append(widget)
             self.option_frames.append(option_frame)
         
         self.update_scrollbar_visibility()
+        self.update_question_scrollbar_visibility()
 
     def update_scrollbar_visibility(self):
         self.root.update_idletasks()
@@ -500,7 +545,12 @@ class MockExamApp:
         self.ui = UIManager(root, self.config)
         self.question_bank = QuestionBank()
         self.exam_state = ExamState(self.config)
+        self.translator = GoogleTranslator(
+            source=self.config['translator']['from_lang'], 
+            target=self.config['translator']['to_lang'])
         self.setup_controls()
+        self.root.bind("<<UpdateQuestionDisplay>>", lambda e: self.display_question())
+        self.root.bind("<<TranslateQuestion>>", self.handle_translate_question)
 
     def load_config(self):
         try:
@@ -753,11 +803,30 @@ class MockExamApp:
             self.root.after_cancel(self.exam_state.timer_id)
             self.exam_state.timer_id = None
 
+    def handle_translate_question(self, event):
+        question = self.exam_state.questions[self.exam_state.current_index]
+        if not question.translated_text:  # Translate only if not already translated
+            try:
+                question.translated_text = self.translator.translate(question.text)
+                question.translated_options = [self.translator.translate(opt) for opt in question.options]
+            except Exception as e:
+                messagebox.showerror("Translation Error", f"Failed to translate: {str(e)}")
+                question.translated_text = question.text
+                question.translated_options = question.options
+        self.display_question()
+
     def display_question(self):
         question = self.exam_state.questions[self.exam_state.current_index]
-        self.ui.question_label.config(text=f"Question {self.exam_state.current_index + 1}\n{question.text}")
         
-        self.ui.create_options(question)
+        # Display translated or original text based on is_translated
+        if self.ui.is_translated and question.translated_text:
+            question_text = f"Question {self.exam_state.current_index + 1}\n{question.translated_text}"
+            options = question.translated_options
+        else:
+            question_text = f"Question {self.exam_state.current_index + 1}\n{question.text}"
+            options = question.options
+
+        self.ui.display_question(question, self.exam_state.current_index)
         
         if question.is_multiple_choice:
             for option, var in self.ui.selected_answers.items():
@@ -765,7 +834,6 @@ class MockExamApp:
         else:
             selected_value = question.user_answers[0] if question.user_answers else ""
             self.ui.selected_answer.set(selected_value)
-            print(f"Displaying question {self.exam_state.current_index + 1}, set selected_answer to: {self.ui.selected_answer.get()}")
         
         self.prev_button.config(state="normal" if self.exam_state.current_index > 0 else "disabled")
         self.next_button.config(state="normal" if self.exam_state.current_index < len(self.exam_state.questions) - 1 else "disabled")
@@ -774,8 +842,6 @@ class MockExamApp:
         self.ui.update_navigation_buttons(self.exam_state.questions, self.exam_state.current_index)
 
         self.flag_button.config(text="Unflag Question" if question.flagged else "Flag Question")
-        
-        self.ui.update_question_scrollbar_visibility()
 
     def save_current_answer(self):
         question = self.exam_state.questions[self.exam_state.current_index]
@@ -784,9 +850,7 @@ class MockExamApp:
             question.user_answers = selected if selected else None
         else:
             answer = self.ui.selected_answer.get()
-            print(f"Saving answer for question {self.exam_state.current_index + 1}, selected_answer: {answer}")
             question.user_answers = [answer] if answer else None
-        print(f"Saved answers for question {self.exam_state.current_index + 1}: {question.user_answers}")
 
     def go_to_question(self, index: Optional[int] = None):
         self.save_current_answer()

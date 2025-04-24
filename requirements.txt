@@ -13,3 +13,4 @@ urllib3==2.4.0
 yarg==0.1.10
 pyyaml==6.0.2
 tkmacosx==1.0.5
+deep-translator==1.11.4
