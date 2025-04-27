@@ -2,7 +2,7 @@
 
 mock_exam_dir=$(dirname "$(realpath "$0")")
 
-if [[ -z "$python_script" ]]; then
+if [[ $# -eq 0 ]]; then
     echo "Error: Please specify either -b/--build or -s/--start or -h/--help"
     echo "Usage: $0 [-b|--build | -s|--start | -h|--help]"
     exit 1
