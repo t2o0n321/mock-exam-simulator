@@ -27,10 +27,16 @@ A Python-based application for simulating exams with single or multiple-choice q
    ```
 
 ## Usage
-Run the application using the provided shell script:
-```bash
-./run_app.sh
-```
+- For macOS users:
+   Just run the application using the provided shell script:
+   ```bash
+   ./run_app.sh
+   ```
+- For Windows users:
+   Activate the Python Virtual Environment and use:
+   ```bash
+   python3 mock_exam_win.py
+   ```
 
 ## CSV File Format
 - **Single-choice mode**: Each question in the CSV should have one correct answer.
