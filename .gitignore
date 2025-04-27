@@ -12,3 +12,7 @@ csv/*.csv
 csv/*.md
 
 test/
+
+__pycache__/
+
+*.egg.info

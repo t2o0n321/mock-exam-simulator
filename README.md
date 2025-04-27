@@ -22,18 +22,15 @@ A Python-based application for simulating exams with single or multiple-choice q
 
 3. **Install Dependencies**
    ```bash
-   pip install -r requirements.txt
+   pip install .
    deactivate
    ```
 
 ## Usage
 Run the application using the provided shell script:
 ```bash
-./run_app.sh [-s|--single | -m|--multiple]
+./run_app.sh
 ```
-
-- `-s` or `--single`: Run the exam in single-choice mode (one correct answer per question).
-- `-m` or `--multiple`: Run the exam in multiple-choice mode (multiple correct answers allowed).
 
 ## CSV File Format
 - **Single-choice mode**: Each question in the CSV should have one correct answer.

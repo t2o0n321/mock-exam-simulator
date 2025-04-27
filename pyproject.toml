@@ -1,0 +1,31 @@
+[project]
+name = "mock-exam-simulator"
+version = "1.0.0"
+description = "A Tkinter-based mock exam simulator with CSV question import and translation support"
+authors = [{ name = "Your Name", email = "your.email@example.com" }]
+requires-python = ">=3.8"
+dependencies = [
+    "certifi==2025.1.31",
+    "charset-normalizer==3.4.1",
+    "docopt==0.6.2",
+    "idna==3.10",
+    "numpy==2.2.4",
+    "pandas==2.2.3",
+    "python-dateutil==2.9.0.post0",
+    "pytz==2025.2",
+    "requests==2.32.3",
+    "six==1.17.0",
+    "tzdata==2025.2",
+    "urllib3==2.4.0",
+    "yarg==0.1.10",
+    "pyyaml==6.0.2",
+    "deep-translator==1.11.4",
+    "tkmacosx==1.0.5; platform_system == 'Darwin'",
+]
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project.scripts]
+mock-exam = "mock_exam_simulator.main:main"

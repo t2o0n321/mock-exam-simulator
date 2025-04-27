@@ -1,0 +1,2 @@
+[console_scripts]
+mock-exam = mock_exam_simulator.main:main
