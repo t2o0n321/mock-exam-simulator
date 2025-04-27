@@ -15,4 +15,4 @@ test/
 
 __pycache__/
 
-*.egg.info
+*.egg-info/
