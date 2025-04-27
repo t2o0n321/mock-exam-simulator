@@ -28,6 +28,7 @@ A Python-based application for simulating exams with single or multiple-choice q
       ```
 - For Windows
    1. **Install Dependencies**
+      > Using virtual environment is the best way but I'm lazy to do it yourself
       ```bash
       cd [path_to_project]
       pip install .
