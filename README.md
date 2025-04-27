@@ -1,6 +1,6 @@
 # Mock Exam Simulator
 
-A Python-based application for simulating exams with single or multiple-choice questions using a Tkinter GUI by AI.
+A Python-based application for simulating exams with multiple-choice questions for macOS and Windows using a Tkinter GUI by AI.
 
 ## Prerequisites
 - Python 3.x
