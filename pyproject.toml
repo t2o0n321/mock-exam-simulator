@@ -20,6 +20,7 @@ dependencies = [
     "yarg==0.1.10",
     "pyyaml==6.0.2",
     "deep-translator==1.11.4",
+    "beautifulsoup4==4.13.4",
     "tkmacosx==1.0.5; platform_system == 'Darwin'",
 ]
 
