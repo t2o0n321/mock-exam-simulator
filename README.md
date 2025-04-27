@@ -18,20 +18,18 @@ A Python-based application for simulating exams with multiple-choice questions f
    2. **Create a Virtual Environment**
       ```bash
       python3 -m venv mock-venv
-      source mock-venv/bin/activate
+      deactivate
       ```
 
    3. **Install Dependencies**
       ```bash
-      pip install .
-      deactivate
+      ./run_app.sh -b
       ```
 - For Windows
    1. **Install Dependencies**
       > Using virtual environment is the best way but I'm lazy to do it yourself
       ```bash
-      cd [path_to_project]
-      pip install .
+      .\run_app.bat -b
       ```
 
 
@@ -39,14 +37,13 @@ A Python-based application for simulating exams with multiple-choice questions f
 - For macOS users
    Just run the application using the provided shell script:
    ```bash
-   ./run_app.sh
+   ./run_app.sh -s
    ```
 - For Windows users
-   - Simply double click on `run_app.bat` or
-   - Run from terminal
-      ```bash
-      .\run_app.bat
-      ```
+   Run from terminal
+   ```bash
+   .\run_app.bat -s
+   ```
 
 ## CSV File Format
 - Supports up to 6 answer options per question.
