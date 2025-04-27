@@ -8,39 +8,47 @@ A Python-based application for simulating exams with single or multiple-choice q
 - Virtual environment (recommended)
 
 ## Setup Instructions
-1. **Install Tkinter**
-   ```bash
-   brew install python-tk
-   ```
-   *Note*: For non-macOS systems, Tkinter is typically included with Python. Check your Python installation or refer to your package manager.
+- For macOS
+   1. **Install Tkinter**
+      ```bash
+      brew install python-tk
+      ```
+      *Note*: For non-macOS systems, Tkinter is typically included with Python. Check your Python installation or refer to your package manager.
 
-2. **Create a Virtual Environment**
-   ```bash
-   python3 -m venv mock-venv
-   source mock-venv/bin/activate
-   ```
+   2. **Create a Virtual Environment**
+      ```bash
+      python3 -m venv mock-venv
+      source mock-venv/bin/activate
+      ```
 
-3. **Install Dependencies**
-   ```bash
-   pip install .
-   deactivate
-   ```
+   3. **Install Dependencies**
+      ```bash
+      pip install .
+      deactivate
+      ```
+- For Windows
+   1. **Install Dependencies**
+      ```bash
+      cd [path_to_project]
+      pip install .
+      ```
+
 
 ## Usage
-- For macOS users:
+- For macOS users
    Just run the application using the provided shell script:
    ```bash
    ./run_app.sh
    ```
-- For Windows users:
-   Activate the Python Virtual Environment and use:
-   ```bash
-   python3 mock_exam_win.py
-   ```
+- For Windows users
+   - Simply double click on `run_app.bat` or
+   - Run from terminal
+      ```bash
+      .\run_app.bat
+      ```
 
 ## CSV File Format
-- **Single-choice mode**: Each question in the CSV should have one correct answer.
-- **Multiple-choice mode**: Supports up to 6 answer options per question.
+- Supports up to 6 answer options per question.
 - You should always use double quote to avoid error:
     ```csv
     question,options,correct

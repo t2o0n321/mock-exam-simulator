@@ -1,20 +1,17 @@
+# mock_exam_simulator/core/exam_state.py
 from typing import List, Optional
 from ..models.question import Question
 
-
 class ExamState:
-    """Manages the state of an ongoing exam."""
-    
-    def __init__(self, config: dict):
+    def __init__(self, config):
         self.current_index: int = 0
         self.score: int = 0
         self.penalties: int = 0
         self.questions: List[Question] = []
-        self.time_remaining: int = config["exam"]["default_time_limit_minutes"] * 60
+        self.time_remaining: int = 0
         self.timer_id: Optional[str] = None
 
-    def reset(self) -> None:
-        """Reset the exam state to initial values."""
+    def reset(self):
         self.current_index = 0
         self.score = 0
         self.penalties = 0

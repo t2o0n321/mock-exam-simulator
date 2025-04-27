@@ -1,10 +1,9 @@
+# mock_exam_simulator/models/question.py
 from dataclasses import dataclass
 from typing import List, Optional
 
-
 @dataclass
 class Question:
-    """Represents a single question in the exam."""
     text: str
     options: List[str]
     correct_answers: List[str]

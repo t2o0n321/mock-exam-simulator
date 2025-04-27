@@ -1,0 +1,1 @@
+# mock_exam_simulator/config/__init__.py
