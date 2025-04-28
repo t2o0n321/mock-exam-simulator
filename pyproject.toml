@@ -33,5 +33,6 @@ build-backend = "setuptools.build_meta"
 [project.scripts]
 mock-exam = "mock_exam_simulator.main:main"
 
-[tool.setuptools.packages]
-find = {include = ["mock_exam_simulator*"], exclude = ["csv*"]}
+[tool.setuptools.packages.find]
+include = ["mock_exam_simulator*"]
+exclude = ["csv", "csv.*", "test-utils"]
