@@ -177,8 +177,12 @@ mock-venv/
 
 .DS_Store
 
-csv/*.csv
+*.csv
 !csv/sample*.csv
+
+test-utils/*.json
+test-utils/*.pdf
+test-utils/*.csv
 
 csv/*.md
 
